@@ -73,7 +73,7 @@ func run(filename, weekdayStr, hm string) error {
 		fmt.Printf(" https://twitter.com/%s/status/%s\n\n", collection.UserName, v.ID)
 
 		if i != len(extracted)-1 {
-			fmt.Printf("Press press any key to continue.")
+			fmt.Printf("Press any key to continue.")
 			if !scanner.Scan() {
 				break
 			}
