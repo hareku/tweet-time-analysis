@@ -10,6 +10,7 @@ import (
 )
 
 type Tweet struct {
+	ID        string    `json:"id"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -30,7 +31,7 @@ func GetTweets(ctx context.Context, cli *http.Client, uid string, since time.Tim
 	nextToken := ""
 	for rem := limit - len(tweets); rem > 0; rem = limit - len(tweets) {
 		q := url.Values{
-			"tweet.fields": []string{"text,created_at"},
+			"tweet.fields": []string{"id,text,created_at"},
 		}
 		if nextToken != "" {
 			q.Add("pagination_token", nextToken)

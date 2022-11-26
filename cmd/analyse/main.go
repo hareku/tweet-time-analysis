@@ -25,8 +25,8 @@ func run(filename string) error {
 	if err != nil {
 		return err
 	}
-	var tweets []tweettime.Tweet
-	if err := json.NewDecoder(f).Decode(&tweets); err != nil {
+	var collection tweettime.Collection
+	if err := json.NewDecoder(f).Decode(&collection); err != nil {
 		return err
 	}
 
@@ -36,7 +36,7 @@ func run(filename string) error {
 	}
 
 	mp := map[time.Weekday]map[string]int{}
-	for _, v := range tweets {
+	for _, v := range collection.Tweets {
 		t := v.CreatedAt.In(jst).Round(time.Minute * 20)
 		if mp[t.Weekday()] == nil {
 			mp[t.Weekday()] = make(map[string]int)

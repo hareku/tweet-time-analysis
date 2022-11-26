@@ -78,7 +78,11 @@ func run(username string, days, limit int) error {
 		return fmt.Errorf("create file: %w", err)
 	}
 	defer f.Close()
-	if err := json.NewEncoder(f).Encode(&tweets); err != nil {
+	if err := json.NewEncoder(f).Encode(&tweettime.Collection{
+		UserName: username,
+		UserID:   uid,
+		Tweets:   tweets,
+	}); err != nil {
 		return fmt.Errorf("encode json: %w", err)
 	}
 	log.Printf("Saved %d tweets at %s.", len(tweets), filename)

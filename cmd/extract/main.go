@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -25,8 +27,8 @@ func run(filename, weekdayStr, hm string) error {
 	if err != nil {
 		return err
 	}
-	var tweets []tweettime.Tweet
-	if err := json.NewDecoder(f).Decode(&tweets); err != nil {
+	var collection tweettime.Collection
+	if err := json.NewDecoder(f).Decode(&collection); err != nil {
 		return err
 	}
 
@@ -54,17 +56,28 @@ func run(filename, weekdayStr, hm string) error {
 	}
 
 	extracted := []tweettime.Tweet{}
-	for _, v := range tweets {
+	for _, v := range collection.Tweets {
 		t := v.CreatedAt.In(jst).Round(time.Minute * 20)
 		if t.Weekday() == wd && t.Format("15:04") == hm {
 			extracted = append(extracted, v)
 		}
 	}
 
-	for _, v := range extracted {
+	log.Printf("Found %d tweets.", len(extracted))
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for i, v := range extracted {
 		fmt.Print(strings.Repeat("-", 30), "\n")
 		fmt.Printf("%s\n", v.Text)
-		fmt.Printf("\n\n")
+		fmt.Printf("%s (%v days ago)", v.CreatedAt.In(jst).Format(time.RFC3339), math.Round(time.Since(v.CreatedAt).Hours()/24))
+		fmt.Printf(" https://twitter.com/%s/status/%s\n\n", collection.UserName, v.ID)
+
+		if i != len(extracted)-1 {
+			fmt.Printf("Press press any key to continue.")
+			if !scanner.Scan() {
+				break
+			}
+		}
 	}
 
 	return nil
