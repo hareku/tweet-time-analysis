@@ -2,8 +2,9 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -27,11 +28,10 @@ func run(filename, weekdayStr, hm string) error {
 	if err != nil {
 		return err
 	}
-	var collection tweettime.Collection
-	if err := json.NewDecoder(f).Decode(&collection); err != nil {
+	c, err := tweettime.NewCollectionFromReader(f)
+	if err != nil {
 		return err
 	}
-
 	jst, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		return err
@@ -46,34 +46,40 @@ func run(filename, weekdayStr, hm string) error {
 		time.Friday,
 		time.Saturday,
 	}
-
-	var wd time.Weekday
+	var (
+		wd    time.Weekday
+		found bool
+	)
 	for _, v := range weekdays {
 		if v.String() == weekdayStr {
 			wd = v
+			found = true
 			break
 		}
 	}
-
-	extracted := []tweettime.Tweet{}
-	for _, v := range collection.Tweets {
-		t := v.CreatedAt.In(jst).Round(time.Minute * 20)
-		if t.Weekday() == wd && t.Format("15:04") == hm {
-			extracted = append(extracted, v)
-		}
+	if !found {
+		return fmt.Errorf("not found weekday %q", weekdayStr)
 	}
 
-	log.Printf("Found %d tweets.", len(extracted))
-
 	scanner := bufio.NewScanner(os.Stdin)
-	for i, v := range extracted {
-		fmt.Print(strings.Repeat("-", 30), "\n")
-		fmt.Printf("%s\n", v.Text)
-		fmt.Printf("%s (%v days ago)", v.CreatedAt.In(jst).Format(time.RFC3339), math.Round(time.Since(v.CreatedAt).Hours()/24))
-		fmt.Printf(" https://twitter.com/%s/status/%s\n\n", collection.UserName, v.ID)
+	for {
+		v, err := c.ReadTweet()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				log.Printf("No more tweets.")
+				return nil
+			}
+			return fmt.Errorf("read tweet: %w", err)
+		}
 
-		if i != len(extracted)-1 {
-			fmt.Printf("Press any key to continue.")
+		t := v.CreatedAt.In(jst).Round(time.Minute * 20)
+		if t.Weekday() == wd && t.Format("15:04") == hm {
+			fmt.Print(strings.Repeat("-", 30), "\n")
+			fmt.Printf("%s\n", v.Text)
+			fmt.Printf("%s (%v days ago)", v.CreatedAt.In(jst).Format(time.RFC3339), math.Round(time.Since(v.CreatedAt).Hours()/24))
+			fmt.Printf(" https://twitter.com/%s/status/%s\n\n", c.Meta.UserName, v.ID)
+
+			fmt.Printf("Press any key to continue.\n")
 			if !scanner.Scan() {
 				break
 			}

@@ -72,19 +72,29 @@ func run(username string, days, limit int) error {
 		return errors.New("no tweets")
 	}
 
-	filename := fmt.Sprintf("out/%s_%dtweets_last%ddays_%s.json", username, len(tweets), days, time.Now().Format("2006-01-02-15-04-05"))
+	filename := fmt.Sprintf("out/%s_%dtweets_last%ddays_%s", username, len(tweets), days, time.Now().Format("2006-01-02-15-04-05"))
 	f, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
 	defer f.Close()
-	if err := json.NewEncoder(f).Encode(&tweettime.Collection{
+
+	e := json.NewEncoder(f)
+	err = e.Encode(tweettime.CollectionMeta{
 		UserName: username,
 		UserID:   uid,
-		Tweets:   tweets,
-	}); err != nil {
-		return fmt.Errorf("encode json: %w", err)
+	})
+	if err != nil {
+		return fmt.Errorf("encode meta: %w", err)
 	}
-	log.Printf("Saved %d tweets at %s.", len(tweets), filename)
+
+	for _, v := range tweets {
+		err = e.Encode(v)
+		if err != nil {
+			return fmt.Errorf("encode tweet: %w", err)
+		}
+	}
+
+	log.Printf("Saved %d tweets at %q.", len(tweets), filename)
 	return nil
 }

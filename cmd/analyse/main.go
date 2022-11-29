@@ -1,8 +1,9 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sort"
@@ -25,8 +26,8 @@ func run(filename string) error {
 	if err != nil {
 		return err
 	}
-	var collection tweettime.Collection
-	if err := json.NewDecoder(f).Decode(&collection); err != nil {
+	c, err := tweettime.NewCollectionFromReader(f)
+	if err != nil {
 		return err
 	}
 
@@ -36,7 +37,15 @@ func run(filename string) error {
 	}
 
 	mp := map[time.Weekday]map[string]int{}
-	for _, v := range collection.Tweets {
+	for {
+		v, err := c.ReadTweet()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("read tweet: %w", err)
+		}
+
 		t := v.CreatedAt.In(jst).Round(time.Minute * 20)
 		if mp[t.Weekday()] == nil {
 			mp[t.Weekday()] = make(map[string]int)
